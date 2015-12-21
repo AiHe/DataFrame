@@ -8,8 +8,9 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 class DataFrameSuite extends FunSuite with BeforeAndAfterAll {
 
   test("load csv") {
-    DataFrame.loadCSV(path = "/Users/aihe/Documents/workspace/fraud-detection/oct_cr_order2.txt",
-      tableName = "fraud", header = true)
+    val df = DataFrame.loadCSV(path = "data/sample.csv", tableName = "fraud", header = true)
+    assert(df.length == 36634)
+    assert(df.width == 18)
   }
 
 }
