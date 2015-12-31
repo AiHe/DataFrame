@@ -1,7 +1,7 @@
-package me.aihe
+package me.aihe.dataframe
 
-import me.aihe.types.{DoubleType, IntType, LongType, StringType}
-import me.aihe.util.{InferSchema, Parser}
+import me.aihe.dataframe.types.{DoubleType, IntType, LongType, StringType}
+import me.aihe.dataframe.util.{InferSchema, Parser}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -12,7 +12,7 @@ import scala.util.Success
   * Created by aihe on 12/21/15.
   */
 
-case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty) {
+case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty) extends Traversable[Row] {
   require(columns.map(_.name).distinct.length == columns.length)
   require(columns.isEmpty || columns.map(_.data.size).distinct.size == 1)
 
@@ -23,18 +23,20 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
     case _ => columns.head.data.size
   }
 
-  val size = length
+  override val size = length
 
   val width = columns.length
 
-  val colNames = columns.map(_.name)
+  val columnNames = columns.map(_.name)
 
-  lazy val rows = (0 until length).map(Row(this, _))
+  //  lazy val rows = (0 until length).map(i => Row((0 until width).map(j => columns(j)(i))))
 
-  lazy val columnsMap = Map(colNames.zip(columns): _*)
+  lazy val rows = for (i <- 0 until length) yield Row(for (j <- 0 until width) yield columns(j)(i))
+
+  lazy val columnsNameMap = Map(columnNames.zip(columns): _*)
 
   override def toString = {
-    colNames.mkString("", "\t", "\n") + rows.map(_.values.mkString("\t")).mkString("\n")
+    columnNames.mkString("", "\t", "\n") + rows.map(_.data.mkString("\t")).mkString("\n")
   }
 
   def apply(index: Int): Row = {
@@ -43,19 +45,19 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
   }
 
   def apply(colName: String): GenericColumn = {
-    require(colNames.indexOf(colName) > 0)
-    columnsMap(colName)
+    require(columnNames.indexOf(colName) > 0)
+    columnsNameMap(colName)
   }
 
-  def nonEmpty: Boolean = length > 0
+  override def nonEmpty: Boolean = length > 0
 
-  def isEmpty: Boolean = !nonEmpty
+  override def isEmpty: Boolean = !nonEmpty
 
-  def head: Row = rows.head
+  override def head: Row = rows.head
 
-  def last: Row = rows.last
+  override def last: Row = rows.last
 
-  def headOption: Option[Row] = rows.headOption
+  override def headOption: Option[Row] = rows.headOption
 
   //  def partition(p: Row => Boolean): (Table, Table) = {
   //    val (r1, r2) = rows.partition(p(_))
@@ -79,6 +81,15 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
     columns.lastOption
   }
 
+  def map[T](f: Row => T): Traversable[T] = {
+    rows.map(f)
+  }
+
+  //  def map(f: Row => Array[String]): DataFrame = {
+  //    load(rows.map(f), tableName)
+  //  }
+
+  override def foreach[U](f: (Row) => U): Unit = ???
 }
 
 case object DataFrame {
@@ -96,7 +107,7 @@ case object DataFrame {
     }
   }
 
-  def load(data: IndexedSeq[Array[String]], tableName: String, header: Boolean = false): DataFrame = {
+  def load(data: Seq[Array[String]], tableName: String, header: Boolean = false): DataFrame = {
     val (h, d) = if (header) {
       val (a, b) = data.splitAt(1)
       (a.head, b)

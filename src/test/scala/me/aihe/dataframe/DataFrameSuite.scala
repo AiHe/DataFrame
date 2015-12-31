@@ -1,4 +1,4 @@
-package me.aihe
+package me.aihe.dataframe
 
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 

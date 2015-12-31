@@ -1,7 +1,6 @@
-package me.aihe.util
+package me.aihe.dataframe.util
 
-
-import me.aihe.types._
+import me.aihe.dataframe.types._
 
 import scala.util.{Success, Try}
 
