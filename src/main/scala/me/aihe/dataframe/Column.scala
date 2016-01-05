@@ -29,8 +29,4 @@ case class Column[T](name: String, data: Seq[T], override val dataType: DataType
   override def toString = {
     name + "\n" + data.mkString("\n")
   }
-
-  //  def fromRows(rowIndexes: IndexedSeq[Int]): Column[T] = {
-  //    Column(name, rowIndexes.map(data(_)), dataType)
-  //  }
 }

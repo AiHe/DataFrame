@@ -26,7 +26,7 @@ class DataFrameSuite extends FunSuite with BeforeAndAfterAll {
       pid <- r.getAs[Int]("policyID")
       if pid.toString.startsWith("1111")
     } yield r
-    val newDF = DataView(df, rows).toDataFrame
+    val newDF = DataFrame.fromRows(df, rows)
     println(newDF.headOption)
     assert(newDF.forall(_.getAs[Int]("policyID").exists(_.toString.startsWith("1111"))))
   }
