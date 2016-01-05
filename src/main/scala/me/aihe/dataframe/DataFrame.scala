@@ -3,21 +3,23 @@ package me.aihe.dataframe
 import me.aihe.dataframe.types._
 import me.aihe.dataframe.util.{InferSchema, Parser}
 
-import scala.collection.GenTraversableOnce
+import scala.collection.generic.CanBuildFrom
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Success
 
+import scala.collection.{mutable, IndexedSeqLike}
+
 /**
   * Created by aihe on 12/21/15.
   */
 
-case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty) {
+case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty) extends IndexedSeqLike[Row, BaseTable] with BaseTable {
   require(columns.map(_.name).distinct.length == columns.length)
   require(columns.isEmpty || columns.map(_.data.size).distinct.size == 1)
 
-  val table: DataFrame = this
+  val df: DataFrame = this
 
   val length = columns.length match {
     case 0 => 0
@@ -32,19 +34,19 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
 
   val columnTypes = columns.map(_.dataType)
 
-  //  lazy val rows = (0 until length).map(i => Row((0 until width).map(j => columns(j)(i))))
+  lazy val rows = for (i <- 0 until length) yield Row(i, for (j <- 0 until width) yield columns(j)(i), columnNames)
 
-  lazy val rows = for (i <- 0 until length) yield Row(for (j <- 0 until width) yield columns(j)(i), columnNames)
+  lazy val dataView = DataView(df, rows)
 
   lazy val columnsNameMap = Map(columnNames.zip(columns): _*)
 
   override def toString = {
-    columnNames.mkString("", "\t", "\n") + rows.map(_.data.mkString("\t")).mkString("\n")
+    columnNames.mkString("", "\t", "\n") + dataView.map(_.data.mkString("\t")).mkString("\n")
   }
 
   def apply(index: Int): Row = {
     require(index >= 0 && index < length)
-    rows(index)
+    dataView(index)
   }
 
   def apply(colName: String): GenericColumn = {
@@ -52,20 +54,38 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
     columnsNameMap(colName)
   }
 
-  //  override def nonEmpty: Boolean = length > 0
-  //
-  //  override def isEmpty: Boolean = !nonEmpty
-  //
-  //  override def head: Row = rows.head
-  //
-  //  override def last: Row = rows.last
-  //
-  //  override def headOption: Option[Row] = rows.headOption
+  override def partition(p: Row => Boolean): (DataFrame, DataFrame) = {
+    val (r1, r2) = dataView.partition(p(_))
+    r1.toDataFrame -> r2.toDataFrame
+  }
 
-  //  def partition(p: Row => Boolean): (Table, Table) = {
-  //    val (r1, r2) = rows.partition(p(_))
-  //    Table.fromRows(tableName + "_true", r1) -> Table.fromRows(tableName + "_false", r2)
-  //  }
+  override def take(n: Int): DataFrame = super.take(n).toDataFrame
+
+  override def drop(n: Int): DataFrame = super.drop(n).toDataFrame
+
+  override def takeWhile(p: (Row) => Boolean): DataFrame = super.takeWhile(p).toDataFrame
+
+  override def dropRight(n: Int): DataFrame = super.dropRight(n).toDataFrame
+
+  override def takeRight(n: Int): DataFrame = super.takeRight(n).toDataFrame
+
+  override def filter(p: (Row) => Boolean): DataFrame = super.filter(p).toDataFrame
+
+  override def filterNot(p: (Row) => Boolean): DataFrame = super.filterNot(p).toDataFrame
+
+  override def dropWhile(p: (Row) => Boolean): DataFrame = super.dropWhile(p).toDataFrame
+
+  override def splitAt(n: Int): (DataFrame, DataFrame) = {
+    val (_1, _2) = super.splitAt(n)
+    (_1.toDataFrame, _2.toDataFrame)
+  }
+
+  override def span(p: (Row) => Boolean): (DataFrame, DataFrame) = {
+    val (_1, _2) = super.span(p)
+    (_1.toDataFrame, _2.toDataFrame)
+  }
+
+  override def init: DataFrame = super.init.toDataFrame
 
   def column(col: Int) = {
     require(col >= 0 && col < width)
@@ -84,27 +104,16 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
     columns.lastOption
   }
 
-  def map[T](f: Row => T): Seq[T] = {
-    rows.map(f)
-  }
+  //  override def seq: IndexedSeq[Row] = dataView.seq
 
-  def flatMap[T](f: Row => GenTraversableOnce[T]): Seq[T] = {
-    rows.flatMap(f)
-  }
+  override protected[this] def newBuilder: mutable.Builder[Row, DataView] = DataView.newBuilder(df)
 
-  def withFilter(p: Row => Boolean) = {
-    rows.withFilter(p)
-  }
+  override val name: String = tableName
 
-  def forall(p: Row => Boolean): Boolean = {
-    rows.forall(p)
-  }
+  override def toDataFrame: DataFrame = this
 
-  //  override def foreach[U](f: (Row) => U): Unit = {
-  //    rows.foreach(f)
-  //  }
+  override def toDataView: DataView = dataView
 
-  //  override def iterator: Iterator[Row] = rows.iterator
 }
 
 case object DataFrame {
@@ -160,7 +169,7 @@ case object DataFrame {
   }
 
   def fromRows(tableName: String, rows: Seq[Row] = Seq.empty, columnNames: Seq[String],
-            columnTypes: Seq[DataType]): DataFrame = {
+               columnTypes: Seq[DataType]): DataFrame = {
     val columns = columnNames.indices.map { case (i: Int) => Future(
       feedColumn(columnNames(i), columnTypes(i), rows.map(_ (i))))
     }

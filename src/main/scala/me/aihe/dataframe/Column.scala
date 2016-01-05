@@ -19,10 +19,18 @@ trait GenericColumn {
   def get(index: Int): Any = data(index)
 
   def getAs[T](i: Int): Try[T] = Try(apply(i).asInstanceOf[T])
+
+  def fromRows(rowIndexes: IndexedSeq[Int]): GenericColumn = {
+    Column(name, rowIndexes.map(data(_)), dataType)
+  }
 }
 
 case class Column[T](name: String, data: Seq[T], override val dataType: DataType) extends GenericColumn {
   override def toString = {
     name + "\n" + data.mkString("\n")
   }
+
+  //  def fromRows(rowIndexes: IndexedSeq[Int]): Column[T] = {
+  //    Column(name, rowIndexes.map(data(_)), dataType)
+  //  }
 }

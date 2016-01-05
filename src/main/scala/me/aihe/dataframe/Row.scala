@@ -5,7 +5,7 @@ import scala.util.Try
 /**
   * Created by aihe on 12/21/15.
   */
-case class Row(private[dataframe] val data: Seq[Any], private[dataframe] val names: Seq[String]) {
+case class Row(private[dataframe] val index: Int, private[dataframe] val data: Seq[Any], private[dataframe] val names: Seq[String]) {
   //  require(index >= 0 && index < table.length)
 
   //  lazy val values = table.columns.map(_.data(index))
