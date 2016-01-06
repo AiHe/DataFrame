@@ -1,5 +1,6 @@
 package me.aihe.dataframe
 
+import me.aihe.dataframe.types.IntType
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 /**
@@ -12,6 +13,15 @@ class DataFrameSuite extends FunSuite with BeforeAndAfterAll {
   override def beforeAll(): Unit = {
     super.beforeAll()
     df = DataFrame.loadCSV(path = "data/sample.csv", tableName = "fraud", header = true)
+  }
+
+  test("create") {
+    val df1 = DataFrame("empty")
+    assert(df1.length == 0)
+    assert(df1.width == 0)
+    val df2 = DataFrame("one", Seq(Column[Int]("c1", 0 until 5, IntType)))
+    assert(df2.length == 5)
+    assert(df2.width == 1)
   }
 
   test("load csv") {
