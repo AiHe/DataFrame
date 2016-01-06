@@ -3,7 +3,9 @@ package me.aihe.dataframe
 import me.aihe.dataframe.types._
 import me.aihe.dataframe.util.{InferSchema, Parser}
 
-import scala.collection.{LinearSeq, IndexedSeqLike, mutable}
+import scala.collection.IndexedSeq._
+import scala.collection.Seq._
+import scala.collection._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
@@ -13,7 +15,10 @@ import scala.util.Success
   * Created by aihe on 12/21/15.
   */
 
-case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty) extends IndexedSeqLike[Row, DataFrame] with IndexedSeq[Row] {
+case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
+  extends IndexedSeqLike[Row, DataFrame]
+  with IndexedSeq[Row] {
+
   require(columns.map(_.name).distinct.length == columns.length)
   require(columns.isEmpty || columns.map(_.data.size).distinct.size == 1)
 
@@ -53,22 +58,24 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
     columns(col)
   }
 
-  def firstColumn = {
-    columns.head
-  }
+  def firstColumn = columns.head
 
-  def lastColumn = {
-    columns.last
-  }
+  def lastColumn = columns.last
 
-  def lastColumnOption = {
-    columns.lastOption
-  }
+  def lastColumnOption = columns.lastOption
+
 
   override protected[this] def newBuilder: mutable.Builder[Row, DataFrame] = {
     DataFrame.newBuilder(df)
   }
 
+  /*override def map[B](f: (Row) => B): DataFrame = {
+    val b = newBuilder
+    for (x <- this) b += f(x) // take Row
+    b.result // build DataFrame
+    The newBuider cannot be used in map because newBuilder will take Row to build DataFrame,
+    but the result type of function f is B.
+  }*/
 
   val name: String = tableName
 
@@ -115,7 +122,7 @@ case object DataFrame {
   }
 
   private def newBuilder(dataFrame: DataFrame): mutable.Builder[Row, DataFrame] = {
-    LinearSeq.newBuilder[Row] mapResult (vector => {
+    Vector.newBuilder[Row] mapResult (vector => {
       val rowIndexes = vector.map(_.index)
       val newColumns = dataFrame.columns.map(col => col.fromRows(rowIndexes))
       DataFrame(dataFrame.name, newColumns)
