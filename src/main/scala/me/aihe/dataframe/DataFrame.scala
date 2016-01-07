@@ -16,7 +16,7 @@ import scala.util.Success
   */
 
 case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
-  extends IndexedSeqLike[Row, DataFrame]
+  extends IndexedSeqOptimized[Row, DataFrame]
   with IndexedSeq[Row] {
 
   require(columns.map(_.name).distinct.length == columns.length)
@@ -38,6 +38,11 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
   lazy val rows = for (i <- 0 until length) yield Row(i, for (j <- 0 until width) yield columns(j)(i), columnNames)
 
   lazy val columnsNameMap = Map(columnNames.zip(columns): _*)
+
+  lazy val nameIndexMap = Map(columnNames.zipWithIndex: _*)
+
+  lazy val indexNameMap = Map((0 until width).zip(columnNames): _*)
+
 
   override def toString = {
     columnNames.mkString("", "\t", "\n") + rows.map(_.data.mkString("\t")).mkString("\n")
@@ -79,8 +84,39 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
 
   val name: String = tableName
 
-  override def seq: IndexedSeq[Row] = rows
+  def addColumn[T](column: Column[T]): DataFrame = {
+    this.copy(columns = columns :+ column)
+  }
 
+  def addColumn[T](name: String, data: Seq[T], dataType: DataType): DataFrame = {
+    addColumn(Column(name, data, dataType))
+  }
+
+  def insertColumn[T](idx: Int, column: Column[T]): DataFrame = {
+    val (pre, suf) = columns.splitAt(idx)
+    this.copy(columns = (pre :+ column) ++ suf)
+  }
+
+  def insertColumn[T](idx: Int, name: String, data: Seq[T], dataType: DataType): DataFrame = {
+    insertColumn(idx, Column(name, data, dataType))
+  }
+
+  def removeColumn(idx: Int): DataFrame = {
+    val (pre, suf) = columns.splitAt(idx)
+    this.copy(columns = pre ++ suf.drop(1))
+  }
+
+  def removeColumn(name: String): DataFrame = {
+    removeColumn(nameIndexMap(name))
+  }
+
+  def updateColumn[T](idx: Int, column: Column[T]): DataFrame = {
+    this.copy(columns = columns.updated(idx, column))
+  }
+
+  def updateColumn[T](name: String, column: Column[T]): DataFrame = {
+    updateColumn(nameIndexMap(name), column)
+  }
 }
 
 case object DataFrame {
