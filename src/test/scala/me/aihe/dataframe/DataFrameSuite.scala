@@ -67,4 +67,106 @@ class DataFrameSuite extends FunSuite with BeforeAndAfterAll {
     println(newDF.headOption)
     assert(newDF.isInstanceOf[DataFrame] && newDF.forall(_.getAs[Int]("policyID").exists(_.toString.startsWith("1"))))
   }
+
+  test("add column with wrong length") {
+    intercept[IllegalArgumentException] {
+      df.addColumn(Column[Int]("user_id", 1 to 36633, IntType))
+    }
+  }
+
+  test("add column") {
+    val newDF = df.addColumn(Column[Int]("user_id", 1 to 36634, IntType))
+    assert(newDF.exists(_.getAs[Int]("user_id").exists(_ == 1)))
+    assert(!newDF.exists(_.getAs[Int]("user_id").exists(_ == 0)))
+  }
+
+  //  test("add column 2") {
+  //    val newDF = df.addColumn("user_id", 1 to 36634, IntType)
+  //    assert(newDF.exists(_.getAs[Int]("user_id").exists(_ == 1)))
+  //    assert(!newDF.exists(_.getAs[Int]("user_id").exists(_ == 0)))
+  //    assert(df.width == 18)
+  //    assert(newDF.width == 19)
+  //  }
+
+  test("remove column by index") {
+    val newDF = df.removeColumn(0)
+    assert(df.width == 18)
+    assert(newDF.width == 17)
+    assert(newDF.firstColumn.name != "policyID")
+  }
+
+  test("remove column by wrong index") {
+    val newDF = df.removeColumn(-1)
+    assert(df == newDF)
+    assert(df eq newDF)
+  }
+
+  test("remove column by name") {
+    val newDF = df.removeColumn("policyID")
+    assert(df.width == 18)
+    assert(newDF.width == 17)
+  }
+
+  test("remove column by wrong name") {
+    val newDF = df.removeColumn("dummy")
+    assert(df == newDF)
+    assert(df eq newDF)
+  }
+
+  test("insert column") {
+    val newDF = df.insertColumn(0, Column[Int]("user_id", 1 to 36634, IntType))
+    assert(newDF.nameIndexMap("user_id") == 0)
+    assert(newDF.exists(_.getAs[Int]("user_id").exists(_ == 1)))
+    assert(!newDF.exists(_.getAs[Int]("user_id").exists(_ == 0)))
+  }
+
+  test("insert column with wrong length") {
+    intercept[IllegalArgumentException] {
+      df.insertColumn(0, Column[Int]("user_id", 1 to 36635, IntType))
+    }
+  }
+
+  test("insert column at wrong position") {
+    val newDF = df.insertColumn(-1, Column[Int]("user_id", 1 to 36634,
+      IntType))
+    assert(newDF.nameIndexMap("user_id") == 0)
+    assert(newDF.exists(_.getAs[Int]("user_id").exists(_ == 1)))
+    assert(!newDF.exists(_.getAs[Int]("user_id").exists(_ == 0)))
+  }
+
+  test("update column with wrong length") {
+    intercept[IllegalArgumentException] {
+      df.updateColumn(0, Column[Int]("user_id", 1 to 36635, IntType))
+    }
+  }
+
+  test("update column by index") {
+    val newDF = df.updateColumn(0, Column[Int]("user_id", 1 to 36634, IntType))
+    assert(newDF.firstColumn.name == "user_id")
+    assert(newDF.firstColumn.name != "policyID")
+    assert(newDF.exists(_.getAs[Int]("user_id").exists(_ == 1)))
+    assert(!newDF.exists(_.getAs[Int]("user_id").exists(_ == 0)))
+  }
+
+  test("update column by name") {
+    val newDF = df.updateColumn("policyID", Column[Int]("user_id", 1 to 36634, IntType))
+    assert(newDF.columnsNameMap.contains("user_id"))
+    assert(!newDF.columnsNameMap.contains("policyID"))
+    assert(newDF.exists(_.getAs[Int]("user_id").exists(_ == 1)))
+    assert(!newDF.exists(_.getAs[Int]("user_id").exists(_ == 0)))
+  }
+
+  test("update column by wrong index") {
+    val newDF = df.updateColumn(-1, Column[Int]("user_id", 1 to 36634, IntType))
+    assert(df == newDF)
+    assert(df eq newDF)
+  }
+
+  test("update column by wrong name") {
+    val newDF = df.updateColumn("dummy", Column[Int]("user_id", 1 to 36634,
+      IntType))
+    assert(df == newDF)
+    assert(df eq newDF)
+  }
+
 }

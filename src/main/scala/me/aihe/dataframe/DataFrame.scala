@@ -16,8 +16,8 @@ import scala.util.Success
   */
 
 case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
-  extends IndexedSeqOptimized[Row, DataFrame]
-  with IndexedSeq[Row] {
+    extends IndexedSeqOptimized[Row, DataFrame]
+    with IndexedSeq[Row] {
 
   require(columns.map(_.name).distinct.length == columns.length)
   require(columns.isEmpty || columns.map(_.data.size).distinct.size == 1)
@@ -88,34 +88,38 @@ case class DataFrame(tableName: String, columns: Seq[GenericColumn] = Seq.empty)
     this.copy(columns = columns :+ column)
   }
 
-  def addColumn[T](name: String, data: Seq[T], dataType: DataType): DataFrame = {
-    addColumn(Column(name, data, dataType))
-  }
+  //  def addColumn[T](name: String, data: Seq[T], dataType: DataType): DataFrame = {
+  //    addColumn(Column(name, data, dataType))
+  //  }
 
   def insertColumn[T](idx: Int, column: Column[T]): DataFrame = {
     val (pre, suf) = columns.splitAt(idx)
     this.copy(columns = (pre :+ column) ++ suf)
   }
 
-  def insertColumn[T](idx: Int, name: String, data: Seq[T], dataType: DataType): DataFrame = {
-    insertColumn(idx, Column(name, data, dataType))
-  }
+  //  def insertColumn[T](idx: Int, name: String, data: Seq[T], dataType: DataType): DataFrame = {
+  //    insertColumn(idx, Column(name, data, dataType))
+  //  }
 
   def removeColumn(idx: Int): DataFrame = {
-    val (pre, suf) = columns.splitAt(idx)
-    this.copy(columns = pre ++ suf.drop(1))
+    if (0 <= idx && idx < width) {
+      val (pre, suf) = columns.splitAt(idx)
+      this.copy(columns = pre ++ suf.drop(1))
+    } else this
   }
 
   def removeColumn(name: String): DataFrame = {
-    removeColumn(nameIndexMap(name))
+    nameIndexMap.get(name).map(removeColumn).getOrElse(this)
   }
 
   def updateColumn[T](idx: Int, column: Column[T]): DataFrame = {
-    this.copy(columns = columns.updated(idx, column))
+    if (0 <= idx && idx < width) {
+      this.copy(columns = columns.updated(idx, column))
+    } else this
   }
 
   def updateColumn[T](name: String, column: Column[T]): DataFrame = {
-    updateColumn(nameIndexMap(name), column)
+    nameIndexMap.get(name).map(updateColumn(_, column)).getOrElse(this)
   }
 }
 
